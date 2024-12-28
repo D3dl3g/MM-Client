@@ -89,7 +89,7 @@ echo -e "\n"  # Blank line
 # Update system and install necessary packages
 echo -e "\033[0;33mUpdating system and installing required packages...\033[0m"
 sudo apt update -y > /dev/null 2>&1 && sudo apt upgrade -y > /dev/null 2>&1 && sudo apt autoremove -y > /dev/null 2>&1
-sudo apt install --no-install-recommends xserver-xorg x11-xserver-utils xinit openbox chromium -y > /dev/null 2>&1
+sudo apt install --no-install-recommends xserver-xorg x11-xserver-utils xinit openbox chromium konsole -y > /dev/null 2>&1
 echo -e "\033[0;32mSystem updated and packages installed.\033[0m"
 echo -e "\n"  # Blank line
 

@@ -98,7 +98,7 @@ echo -e "\033[0;33mSetting up Openbox autostart...\033[0m"
 mkdir -p ~/.config/openbox
 cat <<EOF > ~/.config/openbox/autostart
 xrandr --output HDMI-1 --mode 1920x1080
-chromium-browser --noerrdialogs --disable-infobars --kiosk $kiosk_url &
+chromium-browser --noerrdialogs --disable-infobars --kiosk --incognito $kiosk_url &
 xset s off
 xset -dpms
 xset s noblank

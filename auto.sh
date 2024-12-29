@@ -24,9 +24,9 @@ ARM_64BIT=""
 
 if [[ "$ARCHITECTURE" == "aarch64" || "$ARCHITECTURE" == "arm64" ]]; then
     ARM_64BIT="arm_64bit=1"
-    echo -e "\033[0;32mDetected 64-bit ARM architecture ($ARCHITECTURE).\033[0m"
+    echo -e "\033[0;32m***Detected 64-bit ARM architecture ($ARCHITECTURE).***\033[0m"
 else
-    echo -e "\033[0;33mDetected 32-bit ARM architecture ($ARCHITECTURE).\033[0m"
+    echo -e "\033[0;32m***Detected 32-bit ARM architecture ($ARCHITECTURE).***\033[0m"
 fi
 
 # Create a new config.txt with the desired content

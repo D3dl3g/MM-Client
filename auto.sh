@@ -16,19 +16,6 @@ if [ -f "$CONFIG_PATH" ]; then
   sudo mv "$CONFIG_PATH" /boot/firmware/config.bk
 fi
 
-# Auto-detect architecture and set arm_64bit=1 if applicable
-ARCHITECTURE=$(uname -m)
-
-# Initialize the variable
-ARM_64BIT=""
-
-if [[ "$ARCHITECTURE" == "aarch64" || "$ARCHITECTURE" == "arm64" ]]; then
-    ARM_64BIT="arm_64bit=1"
-    echo -e "\033[0;32mDetected 64-bit ARM architecture ($ARCHITECTURE).\033[0m"
-else
-    echo -e "\033[0;33mDetected 32-bit ARM architecture ($ARCHITECTURE).\033[0m"
-fi
-
 # Create a new config.txt with the desired content
 echo -e "\033[0;33mCreating the new config.txt...\033[0m"
 
@@ -67,7 +54,7 @@ auto_initramfs=1
 #disable_fw_kms_setup=1
 
 # Run in 64-bit mode
-$ARM_64BIT
+arm_64bit=1
 
 # Disable compensation for displays with overscan
 disable_overscan=1
@@ -90,47 +77,15 @@ EOF
 
 echo -e "\033[0;32mconfig.txt has been created and updated successfully!\033[0m"
 
-# Prompt the user for the username to enable autologin for
-echo -e "\033[0;33mPlease enter the username for autologin (default: pi):\033[0m"
-read -r username
-username=${username:-pi}  # Default to 'pi' if no input is provided
+# Disable swap temporarily and permanently
+echo -e "\033[0;33mDisabling swap...\033[0m"
+sudo swapoff -a
+echo -e "\033[0;32mSwap has been disabled for the current session.\033[0m"
 
-echo -e "\033[0;32mAutologin will be configured for user: $username\033[0m"
-
-# Check if the user exists
-if id "$username" &>/dev/null; then
-    echo -e "\033[0;32mUser '$username' exists.\033[0m"
-else
-    # User does not exist, create the user
-    echo -e "\033[0;31mUser '$username' does not exist. Creating the user...\033[0m"
-    sudo adduser --gecos "" --disabled-password "$username"
-    echo -e "\033[0;32mUser '$username' has been created.\033[0m"
-    
-    # Prompt for password if the user wants to set one
-    echo -e "\033[0;33mDo you want to set a password for user '$username'? (y/n):\033[0m"
-    read -r set_password
-    if [[ "$set_password" == "y" || "$set_password" == "Y" ]]; then
-        echo -e "\033[0;33mPlease enter the password for user '$username':\033[0m"
-        sudo passwd "$username"
-        echo -e "\033[0;32mPassword for user '$username' has been set.\033[0m"
-    else
-        echo -e "\033[0;32mNo password set for user '$username'.\033[0m"
-    fi
-    
-    # Add user to the sudo group
-    sudo usermod -aG sudo "$username"
-    echo -e "\033[0;32mUser '$username' has been added to the sudo group.\033[0m"
-fi
-
-# Setting up autologin for tty1 with the selected or newly created user
-echo -e "\033[0;33mSetting up autologin for tty1...\033[0m"
-sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
-cat <<EOF | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin $username --noclear %I \$TERM
-EOF
-echo -e "\033[0;32mAutologin for tty1 configured for user: $username.\033[0m"
+# Remove swap entry from /etc/fstab permanently
+echo -e "\033[0;33mRemoving swap entry from /etc/fstab...\033[0m"
+sudo sed -i '/swap/d' /etc/fstab
+echo -e "\033[0;32mSwap entry removed from /etc/fstab.\033[0m"
 
 # Prompt user for the URL
 echo -e "\033[0;33mPlease enter the URL for the kiosk (default: http://mm-server:8080):\033[0m"
@@ -169,7 +124,7 @@ sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
 cat <<EOF | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin $username --noclear %I \$TERM
+ExecStart=-/sbin/agetty --autologin pi --noclear %I \$TERM
 EOF
 echo -e "\033[0;32mAutologin for tty1 configured.\033[0m"
 

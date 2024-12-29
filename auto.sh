@@ -87,6 +87,31 @@ echo -e "\033[0;33mRemoving swap entry from /etc/fstab...\033[0m"
 sudo sed -i '/swap/d' /etc/fstab
 echo -e "\033[0;32mSwap entry removed from /etc/fstab.\033[0m"
 
+# User creation and management
+echo -e "\033[0;33mPlease enter the username for the new user (default: pi):\033[0m"
+read -r new_user
+new_user=${new_user:-pi}  # Default to 'pi' if no input is provided
+echo -e "\033[0;33mCreating user: $new_user\033[0m"
+
+# Check if user exists
+if id "$new_user" &>/dev/null; then
+  echo -e "\033[0;32mUser $new_user already exists.\033[0m"
+else
+  echo -e "\033[0;33mUser $new_user does not exist. Creating the user...\033[0m"
+  sudo adduser --gecos "" --disabled-password "$new_user"
+  
+  # Optionally prompt for a password
+  echo -e "\033[0;33mPlease enter a password for user $new_user (leave blank for no password):\033[0m"
+  read -r user_password
+  if [ -n "$user_password" ]; then
+    echo "$new_user:$user_password" | sudo chpasswd
+  fi
+
+  # Add user to sudo group
+  sudo usermod -aG sudo "$new_user"
+  echo -e "\033[0;32mUser $new_user created and added to sudo group.\033[0m"
+fi
+
 # Prompt user for the URL
 echo -e "\033[0;33mPlease enter the URL for the kiosk (default: http://mm-server:8080):\033[0m"
 read -r kiosk_url
@@ -124,7 +149,7 @@ sudo mkdir -p /etc/systemd/system/getty@tty1.service.d/
 cat <<EOF | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin pi --noclear %I \$TERM
+ExecStart=-/sbin/agetty --autologin $new_user --noclear %I \$TERM
 EOF
 echo -e "\033[0;32mAutologin for tty1 configured.\033[0m"
 

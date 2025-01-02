@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# Check if swap is enabled
+if [ $(free | grep Swap | awk '{print $2}') -gt 0 ]; then
+    echo -e "${unbold_orange}Swap is enabled.${unbold}"
+    echo -e "${unbold_yellow}Stopping swap service${unbold} and ${unbold_red}disabling swap...${unbold}"
+    # Stop the dphys-swapfile service
+    sudo service dphys-swapfile stop
+    # Recheck swap status
+    if [ $(free | grep Swap | awk '{print $2}') -eq 0 ]; then
+        echo -e "${unbold_green}Swap Disabled.${unbold}"
+    fi
+    # Label for removing the service
+echo -e "${unbold_orange}Removing \"dphys-swapfile\"...${unbold}"
+
+# Remove the dphys-swapfile service
+sudo apt-get purge -y -qq dphys-swapfile > /dev/null 2>&1
+
+# Confirm successful removal
+echo -e "${unbold_green}\"dphys-swapfile\" Successfully Removed.${unbold}"
+else
+    echo -e "${unbold_green}Swap is already disabled.${unbold}"
+fi
+
 # Define the correct config.txt path
 CONFIG_PATH="/boot/firmware/config.txt"
 

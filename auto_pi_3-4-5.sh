@@ -134,7 +134,7 @@ sudo tee /boot/firmware/config.txt > /dev/null <<EOF
 
 [pi4]
 # Run as fast as firmware / board allows
-#arm_boost=1
+arm_boost=1
 
 [all]
 gpu_mem=246

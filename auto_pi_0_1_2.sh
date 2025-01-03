@@ -137,7 +137,7 @@ sudo tee /boot/config.txt > /dev/null <<EOF
 #arm_boost=1
 
 [all]
-gpu_mem=128
+gpu_mem=92
 EOF
 
 echo -e "\033[0;32mconfig.txt has been created and updated successfully!\033[0m"

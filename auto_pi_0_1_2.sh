@@ -217,7 +217,7 @@ sudo apt-get update -qq && apt-get upgrade -y -qq > /dev/null 2>&1 && echo -e "$
 
 # Install required packages (minimized output)
 echo -e "${unbold_orange}Installing necessary packages...${unbold}"
-sudo apt-get install --no-install-recommends -y -qq xserver-xorg xinit x11-xserver-utils openbox chromium unclutter lm-sensors > /dev/null 2>&1 && echo -e "${unbold_green}Packages installed.${unbold}"
+sudo apt-get install --no-install-recommends -y -qq xserver-xorg xinit x11-xserver-utils openbox midori unclutter lm-sensors > /dev/null 2>&1 && echo -e "${unbold_green}Packages installed.${unbold}"
 
 # Define the lines to add
 line="######## <GITHUB LINK> LINE ADDED FOR KIOSK MODE ########"
@@ -242,7 +242,7 @@ xset s off     # disable screen saver
 xset s noblank # don't blank the video device
 openbox &
 unclutter &    # hide X mouse cursor unless mouse activated
-chromium --kiosk --incognito $MM_URL
+midori -e Fullscreen $MM_URL
 EOF
 
 if [ -f /home/$username/kiosk ]; then

@@ -220,14 +220,19 @@ echo -e "${unbold_orange}Installing necessary packages...${unbold}"
 sudo apt-get install --no-install-recommends -y -qq xserver-xorg xinit x11-xserver-utils openbox midori unclutter lm-sensors > /dev/null 2>&1 && echo -e "${unbold_green}Packages installed.${unbold}"
 
 # Define the lines to add
-line="######## <GITHUB LINK> LINE ADDED FOR KIOSK MODE ########"
-bashrc_line="xinit /home/pi/kiosk -- vt\$(fgconsole)"
+bashrc_guard_line='if [[ -z "$SSH_CONNECTION" && "$(tty)" == "/dev/tty1" ]]; then'
+kiosk_line='  xinit /home/pi/kiosk -- vt$(fgconsole)'
+bashrc_end_guard_line='fi'
+comment_marker="######## <GITHUB LINK> LINE ADDED FOR KIOSK MODE ########"
 
 # Add kiosk mode startup line to .bashrc
-if ! grep -Fxq "$bashrc_line" /home/pi/.bashrc; then
+if ! grep -Fq "$kiosk_line" /home/pi/.bashrc; then
     echo -e "\033[0;32mAdding kiosk mode startup line to .bashrc...\033[0m"
-    echo -e "\n$line" >> /home/pi/.bashrc
-    echo -e "$bashrc_line" >> /home/pi/.bashrc
+    {
+        echo -e "\n$comment_marker"
+        echo "$bashrc_guard_line"
+        echo "$kiosk_line"
+        echo "$bashrc_end_guard_line"
 else
     echo -e "\033[0;32mKiosk mode line already exists in .bashrc.\033[0m"
 fi

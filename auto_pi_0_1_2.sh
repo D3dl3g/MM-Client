@@ -233,6 +233,7 @@ if ! grep -Fq "$kiosk_line" /home/pi/.bashrc; then
         echo "$bashrc_guard_line"
         echo "$kiosk_line"
         echo "$bashrc_end_guard_line"
+    } >> /home/pi/.bashrc
 else
     echo -e "\033[0;32mKiosk mode line already exists in .bashrc.\033[0m"
 fi

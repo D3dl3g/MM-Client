@@ -8,3 +8,6 @@ bash <(curl -s https://raw.githubusercontent.com/D3dl3g/MM-Client/main/auto_pi_0
 bash <(curl -s https://raw.githubusercontent.com/D3dl3g/MM-Client/main/auto_pi_3-4-5.sh)
 ```
 
+```
+bash <(curl -s https://raw.githubusercontent.com/D3dl3g/MM-Client/main/test.sh)
+```

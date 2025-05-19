@@ -243,29 +243,11 @@ echo -e "\n${unbold_orange}Creating Kiosk Script...${unbold}"
 
 cat << EOF > /home/pi/kiosk
 #!/bin/sh
-
 xset -dpms     # disable DPMS (Energy Star) features.
 xset s off     # disable screen saver
 xset s noblank # don't blank the video device
 openbox &
 unclutter &    # hide X mouse cursor unless mouse activated
-
-# Wait for network availability (10 retries, 3s apart)
-MAX_RETRIES=10
-RETRY_DELAY=3
-COUNT=0
-
-echo "Waiting for network to become available..."
-
-while ! ping -c 1 -W 1 $MM_URL >/dev/null 2>&1; do
-    COUNT=\$((COUNT + 1))
-    if [ \$COUNT -ge \$MAX_RETRIES ]; then
-        echo "Network unavailable after \$((MAX_RETRIES * RETRY_DELAY)) seconds. Starting kiosk anyway..."
-        break
-    fi
-    sleep \$RETRY_DELAY
-done
-
 midori -e Fullscreen $MM_URL
 EOF
 

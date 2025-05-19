@@ -257,7 +257,7 @@ COUNT=0
 
 echo "Waiting for network to become available..."
 
-while ! ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; do
+while ! ping -c 1 -W 1 $MM_URL >/dev/null 2>&1; do
     COUNT=\$((COUNT + 1))
     if [ \$COUNT -ge \$MAX_RETRIES ]; then
         echo "Network unavailable after \$((MAX_RETRIES * RETRY_DELAY)) seconds. Starting kiosk anyway..."

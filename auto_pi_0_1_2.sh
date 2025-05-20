@@ -217,7 +217,7 @@ sudo apt-get update -qq && apt-get upgrade -y -qq > /dev/null 2>&1 && echo -e "$
 
 # Install required packages (minimized output)
 echo -e "${unbold_orange}Installing necessary packages...${unbold}"
-sudo apt-get install --no-install-recommends -y -qq xserver-xorg xinit x11-xserver-utils openbox midori unclutter lm-sensors > /dev/null 2>&1 && echo -e "${unbold_green}Packages installed.${unbold}"
+sudo apt-get install --no-install-recommends -y -qq xserver-xorg xinit x11-xserver-utils openbox chromium-browser unclutter lm-sensors > /dev/null 2>&1 && echo -e "${unbold_green}Packages installed.${unbold}"
 
 # Define the lines to add
 bashrc_guard_line='if [[ -z "$SSH_CONNECTION" && "$(tty)" == "/dev/tty1" ]]; then'
@@ -248,7 +248,7 @@ xset s off     # disable screen saver
 xset s noblank # don't blank the video device
 openbox &
 unclutter &    # hide X mouse cursor unless mouse activated
-midori -e Fullscreen $MM_URL
+chromium-browser --display=:0 --kiosk --incognito --window-position=0,0 $MM_URL
 EOF
 
 

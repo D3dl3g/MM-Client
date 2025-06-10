@@ -19,10 +19,6 @@ function ctrl_c() {
     exit 0
 }
 
-# Ask the user for the MagicMirror server URL in blue
-echo -e "\n${unbold_blue}Please enter the full URL of your MagicMirror Server (e.g., http://192.168.1.100:8080 or http://mm-server:8081):${unbold}"
-read MM_URL
-
 # Auto-detect architecture and set arm_64bit=1 if applicable
 ARCHITECTURE=$(uname -m)
 
@@ -35,6 +31,14 @@ if [[ "$ARCHITECTURE" == "aarch64" || "$ARCHITECTURE" == "arm64" ]]; then
 else
     echo -e "\033[0;32m***Detected 32-bit ARM architecture ($ARCHITECTURE).***\033[0m"
 fi
+
+# Update system packages (minimized output)
+echo -e "${unbold_orange}Updating packages...${unbold}"
+sudo apt-get update -qq && apt-get upgrade -y -qq > /dev/null 2>&1 && echo -e "${unbold_green}System updated.${unbold}"
+
+# Ask the user for the MagicMirror server URL in blue
+echo -e "\n${unbold_blue}Please enter the full URL of your MagicMirror Server (e.g., http://192.168.1.100:8080 or http://mm-server:8081):${unbold}"
+read MM_URL
 
 # Define the correct config.txt path
 CONFIG_PATH="/boot/config.txt"
@@ -210,10 +214,6 @@ if [ $(free | grep Swap | awk '{print $2}') -gt 0 ]; then
 else
     echo -e "${unbold_green}Swap is already disabled.${unbold}"
 fi
-
-# Update system packages (minimized output)
-echo -e "${unbold_orange}Updating packages...${unbold}"
-sudo apt-get update -qq && apt-get upgrade -y -qq > /dev/null 2>&1 && echo -e "${unbold_green}System updated.${unbold}"
 
 # Install required packages (minimized output)
 echo -e "${unbold_orange}Installing necessary packages...${unbold}"

@@ -34,7 +34,7 @@ fi
 
 # Update system packages (minimized output)
 echo -e "${unbold_orange}Updating packages...${unbold}"
-sudo apt-get update -qq && apt-get upgrade -y -qq > /dev/null 2>&1 && echo -e "${unbold_green}System updated.${unbold}"
+sudo apt update -qq && sudo apt upgrade -y -qq > /dev/null 2>&1 && echo -e "${unbold_green}System updated.${unbold}"
 
 # Ask the user for the MagicMirror server URL in blue
 echo -e "\n${unbold_blue}Please enter the full URL of your MagicMirror Server (e.g., http://192.168.1.100:8080 or http://mm-server:8081):${unbold}"
@@ -213,7 +213,7 @@ echo -e "${unbold_green}Swap resized to ${NEW_SWAP_MB} MB.${unbold}"
 
 # Install required packages (minimized output)
 echo -e "${unbold_orange}Installing necessary packages...${unbold}"
-sudo apt-get install --no-install-recommends -y -qq xserver-xorg xinit x11-xserver-utils openbox chromium-browser unclutter lm-sensors > /dev/null 2>&1 && echo -e "${unbold_green}Packages installed.${unbold}"
+sudo apt install --no-install-recommends -y -qq xserver-xorg xinit x11-xserver-utils openbox chromium-browser unclutter lm-sensors > /dev/null 2>&1 && echo -e "${unbold_green}Packages installed.${unbold}"
 
 # Define the lines to add
 bashrc_guard_line='if [[ -z "$SSH_CONNECTION" && "$(tty)" == "/dev/tty1" ]]; then'

@@ -190,30 +190,26 @@ EOF
 fi
 
 
-# Check if swap is enabled
-if [ $(free | grep Swap | awk '{print $2}') -gt 0 ]; then
-    echo -e "${unbold_orange}Swap is enabled.${unbold}"
-    echo -e "${unbold_yellow}Stopping swap service${unbold} and ${unbold_red}disabling swap...${unbold}"
+# Get total physical RAM in MB
+TOTAL_RAM_MB=$(awk '/MemTotal/ {printf "%.0f", $2 / 1024}' /proc/meminfo)
 
-    # Stop the dphys-swapfile service
-    sudo service dphys-swapfile stop
+echo -e "${unbold_orange}Total physical RAM: ${TOTAL_RAM_MB} MB${unbold}"
 
-    # Recheck swap status
-    if [ $(free | grep Swap | awk '{print $2}') -eq 0 ]; then
-        echo -e "${unbold_green}Swap Disabled.${unbold}"
-    fi
+# Update dphys-swapfile configuration
+echo -e "${unbold_yellow}Configuring swap to match RAM size...${unbold}"
 
-    # Label for removing the service
-    echo -e "${unbold_orange}Removing \"dphys-swapfile\"...${unbold}"
+# Edit dphys-swapfile config
+sudo sed -i "s/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=${TOTAL_RAM_MB}/" /etc/dphys-swapfile
 
-    # Remove the dphys-swapfile service
-    sudo apt-get purge -y -qq dphys-swapfile > /dev/null 2>&1
+# Restart dphys-swapfile service to apply changes
+echo -e "${unbold_yellow}Restarting swap service...${unbold}"
+sudo systemctl restart dphys-swapfile
 
-    # Confirm successful removal
-    echo -e "${unbold_green}\"dphys-swapfile\" Successfully Removed.${unbold}"
-else
-    echo -e "${unbold_green}Swap is already disabled.${unbold}"
-fi
+# Verify new swap size
+sleep 1
+NEW_SWAP_MB=$(free -m | awk '/Swap:/ {print $2}')
+echo -e "${unbold_green}Swap resized to ${NEW_SWAP_MB} MB.${unbold}"
+
 
 # Install required packages (minimized output)
 echo -e "${unbold_orange}Installing necessary packages...${unbold}"

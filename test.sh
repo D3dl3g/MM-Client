@@ -21,25 +21,56 @@ SLIM=0
 URL=""
 LOG=/var/log/kiosk-install.log
 
-# ---------------------------------------------------------------- colours
-# Auto-off when stdout is not a terminal, so `| tee` / cron get clean text.
+# ---------------------------------------------------------------- palette
+C_RST= C_DIM= C_BLD= C_RED= C_GRN= C_YEL= C_BLU= C_ORA=
+COLOUR=0
+# auto-off when stdout is not a terminal, so `| tee` / cron get clean text
 if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
-  C_RST=$(printf '\033[0m');  C_BLD=$(printf '\033[1m')
-  C_DIM=$(printf '\033[2m');  C_RED=$(printf '\033[31m')
-  C_GRN=$(printf '\033[32m'); C_YEL=$(printf '\033[33m')
-  C_BLU=$(printf '\033[34m'); C_CYN=$(printf '\033[36m')
-else
-  C_RST= C_BLD= C_DIM= C_RED= C_GRN= C_YEL= C_BLU= C_CYN=
+  COLOUR=1
+  C_RST=$(printf '\033[0m')
+  C_DIM=$(printf '\033[2m')
+  C_BLD=$(printf '\033[1m')
+  C_RED=$(printf '\033[1;31m')
+  C_GRN=$(printf '\033[1;32m')
+  C_YEL=$(printf '\033[1;33m')
+  C_BLU=$(printf '\033[1;34m')
+  C_ORA=$(printf '\033[1;38;5;208m')   # orange: 256-colour, not in the basic 8
 fi
 
-ok()   { printf '%s  ok%s %s\n'   "$C_GRN" "$C_RST" "$*"; }
-warn() { printf '%swarn%s %s\n'   "$C_YEL" "$C_RST" "$*" >&2; }
-die()  { printf '%s err%s %s\n'   "$C_RED" "$C_RST" "$*" >&2; exit 1; }
+# ---------------------------------------------------------------- messages
+# glyphs only when colour is active, so piped logs stay greppable for "ok"
+ok() {
+  if ((COLOUR)); then printf '  %s✔ %s%s\n' "$C_GRN" "$*" "$C_RST"
+  else printf '  ok %s\n' "$*"; fi
+}
+warn() {
+  if ((COLOUR)); then printf '  %s!%s %s%s%s\n' "$C_YEL" "$C_RST" "$C_ORA" "$*" "$C_RST" >&2
+  else printf '  warn %s\n' "$*" >&2; fi
+}
+die() {
+  if ((COLOUR)); then printf '  %s✘ %s%s\n' "$C_RED" "$*" "$C_RST" >&2
+  else printf '  err %s\n' "$*" >&2; fi
+  exit 1
+}
+# prompt <colour> <text>  — printf then read, never read -p: read -p counts
+# escape bytes as visible width and mangles the redraw on narrow consoles
+prompt() {
+  if ((COLOUR)); then printf '  %s%s%s ' "$1" "$2" "$C_RST"
+  else printf '  %s ' "$2"; fi
+}
+# OSC 8 hyperlink; terminals without support print the text and drop the code
+link() {
+  if ((COLOUR)); then
+    printf '%s\033]8;;%s\033\\%s\033]8;;\033\\%s' "$C_BLU" "$1" "$2" "$C_RST"
+  else
+    printf '%s' "$2"
+  fi
+}
 
 # ---------------------------------------------------------------- spinner
 # spin "Label, Please Wait" LOGFILE ["done message"] -- cmd [args...]
-#   hides command output in LOGFILE, animates . .. ... with elapsed seconds,
-#   prints "ok <done message>" on success, or the log tail on failure.
+#   hides command output in LOGFILE, animates a braille spinner with elapsed
+#   seconds, prints "✔ done message" on success or the log tail on failure.
 #   Exit status is the command's.
 spin() {
   local label=$1 logf=$2 donemsg=""
@@ -48,16 +79,26 @@ spin() {
   [[ ${1:-} == -- ]] && shift
   [[ -n $donemsg ]] || donemsg=$label
 
-  local rcf spid rc i=0 start=$SECONDS el
-  local -a frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+  local rcf spid rc i=0 start=$SECONDS el nfr
+  local -a frames
+  # braille needs UTF-8; standard ASCII fallback otherwise (what dialog uses)
+  case ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} in
+    *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*) frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏') ;;
+    *)                                frames=('|' '/' '-' '\') ;;
+  esac
+  nfr=${#frames[@]}
 
-  # pre-flight the log: the redirect below runs as the *invoking user*,
-  # so a root-owned file fails here with a bare "Permission denied"
+  # the redirect below runs as the *invoking user*, so a root-owned file
+  # fails with a bare "Permission denied" from the redirection itself
   if [[ ! -w $logf ]]; then
-    printf '%s err%s log not writable by %s: %s\n' \
-      "$C_RED" "$C_RST" "$(id -un)" "$logf" >&2
-    printf '%s      fix: sudo chown %s:%s %s%s\n' \
-      "$C_YEL" "$(id -un)" "$(id -gn)" "$logf" "$C_RST" >&2
+    if ((COLOUR)); then
+      printf '  %s✘ log not writable by %s: %s%s\n' \
+        "$C_RED" "$(id -un)" "$logf" "$C_RST" >&2
+      printf '      %sfix: sudo chown %s:%s %s%s\n' \
+        "$C_DIM" "$(id -un)" "$(id -gn)" "$logf" "$C_RST" >&2
+    else
+      printf '  err log not writable by %s: %s\n' "$(id -un)" "$logf" >&2
+    fi
     return 1
   fi
 
@@ -69,8 +110,8 @@ spin() {
     return 0
   fi
 
-  # status via file: a finished child stays a zombie, so `kill -0` never
-  # goes false and the classic poll loop can hang forever
+  # status via file: a finished child stays a zombie, so `kill -0` never goes
+  # false and the classic poll loop can hang forever
   rcf=$(mktemp) || return 1
   ( "$@" >>"$logf" 2>&1; printf '%s' "$?" >"$rcf" ) &
   spid=$!
@@ -78,8 +119,10 @@ spin() {
   printf '\033[?25l'
   trap 'printf "\033[?25h"' EXIT INT TERM
   while [[ ! -s $rcf ]]; do
+    # one literal space after the label: every frame is exactly one cell, so
+    # the counter never moves; %3d keeps it fixed past 9s and 99s
     printf '\r\033[K  %s%s %s%s  %s%3ds%s' \
-      "$C_BLU" "$label" "${frames[i++%10]}" "$C_BLD" \
+      "$C_BLU" "$label" "${frames[i++%nfr]}" "$C_RST" \
       "$C_DIM" "$((SECONDS-start))" "$C_RST"
     sleep 0.2
   done
@@ -89,13 +132,25 @@ spin() {
 
   el=$((SECONDS-start)); printf '\r\033[K'
   if ((rc == 0)); then
-    printf '%s  ok%s %s %s(%ds)%s\n' "$C_GRN" "$C_RST" "$donemsg" "$C_DIM" "$el" "$C_RST"
+    if ((COLOUR)); then
+      printf '  %s✔ %s%s %s(%ds)%s\n' \
+        "$C_GRN" "$donemsg" "$C_RST" "$C_DIM" "$el" "$C_RST"
+    else
+      printf '  ok %s (%ds)\n' "$donemsg" "$el"
+    fi
   else
-    # on failure report the label, not the success wording
-    printf '%s err%s %s %s(failed after %ds, exit %d)%s\n' \
-      "$C_RED" "$C_RST" "$label" "$C_DIM" "$el" "$rc" "$C_RST" >&2
-    printf '%s--- last 40 lines of %s ---%s\n' "$C_YEL" "$logf" "$C_RST" >&2
-    tail -n 40 "$logf" | sed 's/^/  /' >&2
+    if ((COLOUR)); then
+      printf '  %s✘ %s%s %s(failed after %ds, exit %d)%s\n' \
+        "$C_RED" "$label" "$C_RST" "$C_DIM" "$el" "$rc" "$C_RST" >&2
+      printf '  %s--- last 40 lines of %s ---%s\n' "$C_YEL" "$logf" "$C_RST" >&2
+      # strip SGR + OSC: never let a package's control codes reach our tty
+      tail -n 40 "$logf" \
+        | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g; s/\x1b\][^\x07\x1b]*(\x07|\x1b\\)//g' \
+        | sed 's/^/  /' >&2
+    else
+      printf '  err %s (failed after %ds, exit %d)\n' "$label" "$el" "$rc" >&2
+      tail -n 40 "$logf" | sed 's/^/  /' >&2
+    fi
   fi
   return "$rc"
 }
@@ -117,7 +172,7 @@ done
 sudo -n true 2>/dev/null || sudo -v || die "sudo authentication failed"
 
 ME=$(id -un); MG=$(id -gn)
-# Owned by the invoking user, because spin() redirects into it as that user.
+# owned by the invoking user, because spin() redirects into it as that user
 sudo install -d -m 0755 "$(dirname "$LOG")"
 sudo install -m 0644 -o "$ME" -g "$MG" /dev/null "$LOG" \
   || die "could not create $LOG"
@@ -125,11 +180,22 @@ sudo install -m 0644 -o "$ME" -g "$MG" /dev/null "$LOG" \
 ok "sudo cached, log: $LOG"
 
 ARCH=$(dpkg --print-architecture)
-LONGBIT=$(getconf LONG_BIT)
+KREL=$(uname -r)
 case $ARCH in
-  armhf) ok "32-bit OS Detected using kernel release: $(uname -r)" ;;
-  arm64) ok "64-bit OS Detected using kernel release: $(uname -r)" ;;
-  *)     die "Detected unsupported architecture '$ARCH' — this script has been tested to run on Raspberry Pi OS Lite 32/64bit (Trixie)" ;;
+  armhf|arm64)
+    if ((COLOUR)); then
+      case $ARCH in
+        armhf) desc="32-bit OS (armhf)" ;;
+        arm64) desc="64-bit OS (arm64)" ;;
+      esac
+      printf '  %s✔ %s%s %sDetected using kernel release:%s %s%s%s\n' \
+        "$C_GRN" "$C_ORA" "$desc" "$C_GRN" "$C_GRN" "$C_ORA" "$KREL" "$C_RST"
+    else
+      printf '  ok %s (%s) Detected using kernel release: %s\n' \
+        "$([[ $ARCH == armhf ]] && echo 32-bit || echo 64-bit) OS" "$ARCH" "$KREL"
+    fi
+    ;;
+  *) die "Detected unsupported architecture '$ARCH' — this script has been tested to run on Raspberry Pi OS Lite 32/64bit (Trixie)" ;;
 esac
 
 # ------------------------------------------------------------ 1. packages
@@ -179,7 +245,8 @@ ok "Changes made to config.txt for presence of DRM + Mesa EGL"
 # ------------------------------------------------------------ 2. kiosk URL
 if [[ -z $URL ]]; then
   while :; do
-    read -rp "MagicMirror host[:port] or full URL: " raw || die "no input"
+    prompt "$C_BLU" "MagicMirror host[:port] or full URL:"
+    read -r raw || die "no input"
     raw=${raw//[[:space:]]/}
     [[ -n $raw ]] || continue
     if [[ $raw != *://* ]]; then
@@ -189,14 +256,15 @@ if [[ -z $URL ]]; then
     URL=$raw
     code=$(curl -s -o /dev/null -L -m 15 -w '%{http_code}' "$URL" || true)
     case $code in
-      2*|3*|401|403|404) ok "$URL -> HTTP $code"; break ;;
+      2*|3*|401|403|404) break ;;
     esac
     warn "$URL -> ${code/#000/no response}"
-    read -rp "  use it anyway? [y/N] " a || die "no input"
+    prompt "$C_ORA" "use it anyway? [y/N]"
+    read -r a || die "no input"
     [[ $a == [yY] ]] && break
+    URL=""
   done
 fi
-ok "kiosk URL: $URL"
 
 # ------------------------------------------------------------ 3. kiosk user
 id "$U" &>/dev/null || sudo adduser --disabled-password --gecos "" "$U"
@@ -248,11 +316,14 @@ ok "cog loop -> $URL"
 sudo systemctl daemon-reload
 sudo systemctl restart getty@tty1
 
-cat <<EOF
-
-  ${C_CYN}Kiosk${C_RST}   : $URL
-  ${C_CYN}User${C_RST}    : $U   log: /home/$U/cog.log
-  ${C_CYN}Install${C_RST} : $LOG
-  ${C_CYN}reload${C_RST}  : sudo pkill -x cog        ${C_DIM}(loop relaunches in 5s)${C_RST}
-
-EOF
+CLOG="/home/$U/cog.log"
+echo
+printf '  %sKiosk%s    : %s\n' "$C_BLD" "$C_RST" "$(link "$URL" "$URL")"
+printf '  %sUser%s     : %s%s%s\n' "$C_BLD" "$C_RST" "$C_BLD" "$U" "$C_RST"
+printf '  %sUser log%s : %s%s%s\n' "$C_BLD" "$C_RST" "$C_BLD" "$CLOG" "$C_RST"
+printf '             %scat %s%s\n' "$C_DIM" "$CLOG" "$C_RST"
+printf '  %sInstall%s  : %s%s%s\n' "$C_BLD" "$C_RST" "$C_BLD" "$LOG" "$C_RST"
+printf '             %scat %s%s\n' "$C_DIM" "$LOG" "$C_RST"
+printf '  %sreload%s   : sudo pkill -x cog %s(loop relaunches in 5s)%s\n' \
+  "$C_BLD" "$C_RST" "$C_DIM" "$C_RST"
+echo

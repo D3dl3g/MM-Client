@@ -49,7 +49,7 @@ spin() {
   [[ -n $donemsg ]] || donemsg=$label
 
   local rcf spid rc i=0 start=$SECONDS el
-  local -a dots=('.' '..' '...')
+  local -a dots=('.  ' '.. ' '...')
 
   # pre-flight the log: the redirect below runs as the *invoking user*,
   # so a root-owned file fails here with a bare "Permission denied"

@@ -35,7 +35,7 @@ while (($#)); do
     --user)      U=${2:?--user needs a value};   shift 2 ;;
     --slim)      SLIM=1; shift ;;
     --no-reboot) DO_REBOOT=0; shift ;;
-    -h|--help)   sed -n '2,19p' "$0"; exit 0 ;;
+    -h|--help)   sed -n '2,21p' "$0"; exit 0 ;;
     *)           printf 'err unknown option: %s (try --help)\n' "$1" >&2; exit 2 ;;
   esac
 done
@@ -103,7 +103,8 @@ spin() {
     sleep 0.05                      # let tee catch up before the result line
     rc=$(cat "$rcf")
   else
-    "$@" >>"$logf" 2>&1; rc=$?
+    # in an if-condition so the ERR trap cannot preempt the log dump below
+    if "$@" >>"$logf" 2>&1; then rc=0; else rc=$?; fi
   fi
   rm -f "$rcf"
 
@@ -154,13 +155,11 @@ if ((ISTTY)) && [[ -z ${NO_COLOR:-} ]]; then
   NC=$(printf '\033[0m')
 fi
 
-# completion text: unbold, same hue. Change to $BLUE for blue instead.
-OK_TEXT=$GREEN_NB
-
 trap 'printf "\033[?25h" >&3 2>/dev/null || true
       printf "\n%serr%s interrupted — log: %s\n" "$RED" "$NC" "$LOG" >&2
       exit 130' INT
-trap 'printf "  %serr%s command failed: %s (line %s)\n" "$RED" "$NC" "$BASH_COMMAND" "$LINENO" >&2' ERR
+# exit, or a failed command merely prints and the script carries on as if fine
+trap 'rc=$?; printf "  %serr%s command failed: %s (line %s)\n" "$RED" "$NC" "$BASH_COMMAND" "$LINENO" >&2; exit $rc' ERR
 
 echo
 printf '%sD3dl3gs MagicMirror² Kiosk Auto Installer%s\n' "$YELLOW" "$NC"
@@ -344,9 +343,10 @@ if (( DO_REBOOT )); then
     done
     printf '\r\033[K'
     if (( cancelled )); then
-      # 5 conversions, 5 arguments: ⚠, reset, text, sudo reboot, reset
-      printf '  %s⚠%s  %sReboot cancelled — run %s%ssudo reboot%s when ready\n' \
-        "$ORANGE" "$NC" "$ORANGE" "$BLUE" "$NC" "$NC"
+      # 6 conversions, 6 arguments — BLUE must wrap the words themselves,
+      # or the reset immediately after it cancels the colour before printing
+      printf '  %s⚠%s  %sReboot cancelled — run %ssudo reboot%s when ready%s\n' \
+        "$ORANGE" "$NC" "$ORANGE" "$BLUE" "$ORANGE" "$NC"
       printf '%s reboot cancelled by user\n' "$(date -Is)" >>"$LOG"
       DO_REBOOT=0
     fi
@@ -356,10 +356,9 @@ if (( DO_REBOOT )); then
   fi
 fi
 
-
 if (( DO_REBOOT )); then
   printf '\n  %s⚙️  SETUP COMPLETE — rebooting now%s\n' "$ORANGE" "$NC"
-  sleep 0.5              # give tee time to flush the last lines
+  sleep 0.5                       # give tee time to flush the last lines
   sudo systemctl reboot
 else
   printf '\n  %s⚙️  SETUP COMPLETE%s\n' "$ORANGE" "$NC"

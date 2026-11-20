@@ -329,20 +329,23 @@ printf '%s%s%s\n' "$GREEN" "$RULE" "$NC"
 if (( DO_REBOOT )); then
   if (( ISTTY )); then
     echo
-    printf '  %s⚙️  Rebooting in 30s — press any key to cancel%s\n' "$ORANGE" "$NC"
+    cancelled=0
     for ((i=30; i>0; i--)); do
-      # three conversions, three arguments: %s %2d %s
-      printf '\r\033[K  %s⚙️  Rebooting in %2ds — any key to cancel%s ' \
+      # one line, redrawn in place: no separate header to strand
+      printf '\r\033[K  %s⚙️  Rebooting in %2ds — press any key to cancel%s' \
         "$ORANGE" "$i" "$NC" >&3
       if IFS= read -rsn1 -t 1 _ </dev/tty; then
-        printf '\r\033[K' >&3
-        printf '  %s⚠  Reboot cancelled — run %ssudo reboot%s when ready\n' \
-          "$YELLOW" "$NC" "$BOLD" "$NC"
-        DO_REBOOT=0
+        cancelled=1
         break
       fi
     done
-    printf '\r\033[K' >&3
+    printf '\r\033[K' >&3           # single clear, after the loop, once
+    if (( cancelled )); then
+      # 4 conversions, 4 arguments — %s ⚠, then bold "sudo reboot"
+      printf '  %s⚠%s  Reboot cancelled — run %s%ssudo reboot%s when ready\n' \
+        "$YELLOW" "$NC" "$NC" "$BOLD" "$NC"
+      DO_REBOOT=0
+    fi
   else
     printf '\n  %s⚙️  Reboot to finish: sudo reboot%s\n' "$ORANGE" "$NC"
     DO_REBOOT=0

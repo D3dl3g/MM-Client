@@ -49,7 +49,7 @@ spin() {
   [[ -n $donemsg ]] || donemsg=$label
 
   local rcf spid rc i=0 start=$SECONDS el
-  local -a dots=('.  ' '.. ' '...')
+  local -a frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
 
   # pre-flight the log: the redirect below runs as the *invoking user*,
   # so a root-owned file fails here with a bare "Permission denied"
@@ -78,8 +78,9 @@ spin() {
   printf '\033[?25l'
   trap 'printf "\033[?25h"' EXIT INT TERM
   while [[ ! -s $rcf ]]; do
-    printf '\r\033[K  %s%s%s%s  %s%ds%s' \
-      "$C_BLU" "$label" "${dots[i++%3]}" "$C_BLD" "$C_DIM" "$((SECONDS-start))" "$C_RST"
+    printf '\r\033[K  %s%s %s%s  %s%3ds%s' \
+      "$C_BLU" "$label" "${frames[i++%10]}" "$C_BLD" \
+      "$C_DIM" "$((SECONDS-start))" "$C_RST"
     sleep 0.2
   done
   wait "$spid" 2>/dev/null || true

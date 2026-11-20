@@ -344,13 +344,15 @@ if (( DO_REBOOT )); then
       fi
     done
     printf '\r\033[K'
-    if (( cancelled )); then
-      # 4 conversions, 4 arguments
+        if (( cancelled )); then
+      # 5 conversions, 5 arguments: ⚠, reset, text, sudo reboot, reset
       printf '  %s⚠%s  Reboot cancelled — run %s%ssudo reboot%s when ready\n' \
-        "$YELLOW" "$NC" "$NC" "$BOLD" "$NC"
+        "$ORANGE" "$NC" "$ORANGE" "$BLUE" "$NC"
+      printf '%s reboot cancelled\n' "$(date -Is)" >>"$LOG"
       DO_REBOOT=0
     fi
-  else
+
+2  else
     printf '\n  %s⚙️  Reboot to finish: sudo reboot%s\n' "$ORANGE" "$NC"
     DO_REBOOT=0
   fi

@@ -326,7 +326,6 @@ printf '  %s⚙️  Reload%s    : %ssudo pkill -x cog%s (relaunches in 5s)\n' \
 printf '%s%s%s\n' "$GREEN" "$RULE" "$NC"
 
 # ---------------------------------------------------------------- reboot
-# ---------------------------------------------------------------- reboot
 if (( DO_REBOOT )); then
   if (( ISTTY )); then
     # hand the terminal back: fd 1 is a pipe into tee, and two writers to one
@@ -344,19 +343,19 @@ if (( DO_REBOOT )); then
       fi
     done
     printf '\r\033[K'
-        if (( cancelled )); then
+    if (( cancelled )); then
       # 5 conversions, 5 arguments: ⚠, reset, text, sudo reboot, reset
-      printf '  %s⚠%s  Reboot cancelled — run %s%ssudo reboot%s when ready\n' \
-        "$ORANGE" "$NC" "$ORANGE" "$BLUE" "$NC"
-      printf '%s reboot cancelled\n' "$(date -Is)" >>"$LOG"
+      printf '  %s⚠%s  %sReboot cancelled — run %s%ssudo reboot%s when ready\n' \
+        "$ORANGE" "$NC" "$ORANGE" "$BLUE" "$NC" "$NC"
+      printf '%s reboot cancelled by user\n' "$(date -Is)" >>"$LOG"
       DO_REBOOT=0
     fi
-
-2  else
+  else
     printf '\n  %s⚙️  Reboot to finish: sudo reboot%s\n' "$ORANGE" "$NC"
     DO_REBOOT=0
   fi
 fi
+
 
 if (( DO_REBOOT )); then
   printf '\n  %s⚙️  SETUP COMPLETE — rebooting now%s\n' "$ORANGE" "$NC"

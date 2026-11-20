@@ -51,6 +51,16 @@ spin() {
   local rcf spid rc i=0 start=$SECONDS el
   local -a dots=('.' '..' '...')
 
+  # pre-flight the log: the redirect below runs as the *invoking user*,
+  # so a root-owned file fails here with a bare "Permission denied"
+  if [[ ! -w $logf ]]; then
+    printf '%s err%s log not writable by %s: %s\n' \
+      "$C_RED" "$C_RST" "$(id -un)" "$logf" >&2
+    printf '%s      fix: sudo chown %s:%s %s%s\n' \
+      "$C_YEL" "$(id -un)" "$(id -gn)" "$logf" "$C_RST" >&2
+    return 1
+  fi
+
   # non-tty: no cursor tricks, no escape soup in the log
   if [[ ! -t 1 ]]; then
     printf '%s\n' "$label"
@@ -80,8 +90,9 @@ spin() {
   if ((rc == 0)); then
     printf '%s  ok%s %s %s(%ds)%s\n' "$C_GRN" "$C_RST" "$donemsg" "$C_DIM" "$el" "$C_RST"
   else
+    # on failure report the label, not the success wording
     printf '%s err%s %s %s(failed after %ds, exit %d)%s\n' \
-      "$C_RED" "$C_RST" "$donemsg" "$C_DIM" "$el" "$rc" "$C_RST" >&2
+      "$C_RED" "$C_RST" "$label" "$C_DIM" "$el" "$rc" "$C_RST" >&2
     printf '%s--- last 40 lines of %s ---%s\n' "$C_YEL" "$logf" "$C_RST" >&2
     tail -n 40 "$logf" | sed 's/^/  /' >&2
   fi
@@ -103,7 +114,13 @@ done
 [[ -e /boot/firmware/cmdline.txt ]] || die "not Pi OS: /boot/firmware/cmdline.txt missing"
 # cache sudo BEFORE any spinner: a password prompt behind hidden output hangs
 sudo -n true 2>/dev/null || sudo -v || die "sudo authentication failed"
-sudo install -m 0644 /dev/null "$LOG"
+
+ME=$(id -un); MG=$(id -gn)
+# Owned by the invoking user, because spin() redirects into it as that user.
+sudo install -d -m 0755 "$(dirname "$LOG")"
+sudo install -m 0644 -o "$ME" -g "$MG" /dev/null "$LOG" \
+  || die "could not create $LOG"
+[[ -w $LOG ]] || die "$LOG not writable by $ME"
 ok "sudo cached, log: $LOG"
 
 ARCH=$(dpkg --print-architecture)
@@ -113,7 +130,6 @@ case $ARCH in
   arm64) ok "64-bit OS Detected using kernel release: $(uname -r)" ;;
   *)     die "Detected unsupported architecture '$ARCH' — this script has been tested to run on Raspberry Pi OS Lite 32/64bit (Trixie)" ;;
 esac
-
 
 # ------------------------------------------------------------ 1. packages
 # libegl1 and libgbm1 are hard deps of cog / libwpewebkit, so they are not

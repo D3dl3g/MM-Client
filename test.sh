@@ -42,13 +42,13 @@ done
 
 # ---------------------------------------------------------------- palette
 # initialised empty: die() is reachable before colours are enabled
-RED= GREEN= YELLOW= BLUE= ORANGE= BOLD= DIM= NC=
+RED= GREEN= GREEN_NB= YELLOW= BLUE= ORANGE= BOLD= DIM= NC=
 RULE='━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
 COLOUR=0
 ISTTY=0
 
 # --------------------------------------------------------------- messages
-ok()   { printf '  %s✔%s %s\n' "$GREEN" "$NC" "$*"; }
+ok()   { printf '  %s✔%s %s%s%s\n' "$GREEN" "$NC" "$GREEN_NB" "$*" "$NC"; }
 warn() { printf '  %s⚠%s %s\n' "$YELLOW" "$NC" "$*" >&2; }
 die()  { printf '  %s✖%s %s\n' "$RED" "$NC" "$*" >&2; exit 1; }
 hdr()  { printf '\n%s%s%s\n%s%s%s\n' "$BOLD" "$*" "$NC" "$DIM" "$RULE" "$NC"; }
@@ -143,15 +143,19 @@ exec > >(tee -a "$LOG") 2>&1
 
 if ((ISTTY)) && [[ -z ${NO_COLOR:-} ]]; then
   COLOUR=1
-  RED=$(printf '\033[1;31m')
-  GREEN=$(printf '\033[1;32m')
+  RED=$(printf '\033[1;31m')          # bold red: warnings and failures
+  GREEN=$(printf '\033[1;32m')        # bold green: ticks, rules
+  GREEN_NB=$(printf '\033[32m')       # unbold green: completion text
   YELLOW=$(printf '\033[1;33m')
   BLUE=$(printf '\033[1;34m')
-  ORANGE=$(printf '\033[1;38;5;208m')   # 256-colour: a true orange, unlike 0;33
+  ORANGE=$(printf '\033[1;38;5;208m') # 256-colour: a true orange, unlike 0;33
   BOLD=$(printf '\033[1m')
   DIM=$(printf '\033[2m')
   NC=$(printf '\033[0m')
 fi
+
+# completion text: unbold, same hue. Change to $BLUE for blue instead.
+OK_TEXT=$GREEN_NB
 
 trap 'printf "\033[?25h" >&3 2>/dev/null || true
       printf "\n%serr%s interrupted — log: %s\n" "$RED" "$NC" "$LOG" >&2
@@ -159,7 +163,7 @@ trap 'printf "\033[?25h" >&3 2>/dev/null || true
 trap 'printf "  %serr%s command failed: %s (line %s)\n" "$RED" "$NC" "$BASH_COMMAND" "$LINENO" >&2' ERR
 
 echo
-printf '%sMagicMirror² Kiosk Auto Installer%s\n' "$YELLOW" "$NC"
+printf '%sD3dl3gs MagicMirror² Kiosk Auto Installer%s\n' "$YELLOW" "$NC"
 echo
 echo "Date: $(date)"
 echo "Log : $LOG"
@@ -174,8 +178,9 @@ case $ARCH in
   arm64) DESC="64-bit OS (arm64)" ;;
   *) die "unsupported architecture '$ARCH' — tested on Raspberry Pi OS Lite 32/64-bit (Trixie)" ;;
 esac
-printf '  %s✔%s %s%s%s %sDetected using kernel release:%s %s%s%s\n' \
-  "$GREEN" "$NC" "$ORANGE" "$DESC" "$NC" "$GREEN" "$NC" "$ORANGE" "$KREL" "$NC"
+printf '  %s✔%s %s%s%s %s%sDetected using kernel release:%s %s%s%s\n' \
+  "$GREEN" "$NC" "$ORANGE" "$DESC" "$NC" "$GREEN_NB" "$NC" \
+  "$GREEN_NB" "$ORANGE" "$KREL" "$NC"
 ok "sudo cached, logs writable"
 
 # ---------------------------------------------------------------- packages
@@ -240,9 +245,10 @@ if [[ -z $URL ]]; then
     if [[ $code == [234]* ]]; then
       URL=$raw; ok "🌐  Reachable: $raw (HTTP $code)"; break
     fi
-    printf '  %s!%s %s%s -> %s%s\n' "$YELLOW" "$NC" "$ORANGE" "$raw" \
+    # red: unreachable address is a failure, not a caution
+    printf '  %s! %s -> %s%s\n' "$RED" "$raw" \
       "${code/#000/no response}" "$NC" >&2
-    prompt "$ORANGE" "🌐  use it anyway? [y/N]"
+    prompt "$RED" "🌐  use it anyway? [y/N]"
     read -r a || die "no input"
     if [[ $a == [yY] ]]; then URL=$raw; ok "🌐  Accepted: $URL"; break; fi
   done
@@ -307,14 +313,14 @@ ok "⚙️  getty@tty1 reloaded"
 CLOG="/home/$U/cog.log"
 echo
 printf '%s%s%s\n' "$GREEN" "$RULE" "$NC"
-printf '  %s👤 User%s      : %s%s%s\n'        "$BOLD" "$NC" "$GREEN" "$U" "$NC"
-printf '  %s🖥️  Kiosk%s     : %s\n'           "$BOLD" "$NC" "$(link "$URL" "$URL")"
-printf '  %s📝 User log%s  : %s%s%s\n'        "$BOLD" "$NC" "$GREEN" "$CLOG" "$NC"
-printf '               %scat %s%s\n'          "$DIM" "$CLOG" "$NC"
-printf '  %s📝 Install%s   : %s%s%s\n'        "$BOLD" "$NC" "$GREEN" "$LOG" "$NC"
-printf '               %scat %s%s\n'          "$DIM" "$LOG" "$NC"
-printf '  %s📝 Apt log%s   : %s%s%s\n'        "$BOLD" "$NC" "$GREEN" "$APTLOG" "$NC"
-printf '               %scat %s%s\n'          "$DIM" "$APTLOG" "$NC"
+printf '  %s👤 User%s      : %s%s%s\n'   "$BOLD" "$NC" "$GREEN_NB" "$U" "$NC"
+printf '  %s🖥️  Kiosk%s     : %s\n'      "$BOLD" "$NC" "$(link "$URL" "$URL")"
+printf '  %s📝 User log%s  : %s%s%s\n'   "$BOLD" "$NC" "$GREEN_NB" "$CLOG" "$NC"
+printf '               %scat %s%s\n'     "$DIM" "$CLOG" "$NC"
+printf '  %s📝 Install%s   : %s%s%s\n'   "$BOLD" "$NC" "$GREEN_NB" "$LOG" "$NC"
+printf '               %scat %s%s\n'     "$DIM" "$LOG" "$NC"
+printf '  %s📝 Apt log%s   : %s%s%s\n'   "$BOLD" "$NC" "$GREEN_NB" "$APTLOG" "$NC"
+printf '               %scat %s%s\n'     "$DIM" "$APTLOG" "$NC"
 printf '  %s⚙️  Reload%s    : %ssudo pkill -x cog%s (relaunches in 5s)\n' \
   "$BOLD" "$NC" "$DIM" "$NC"
 printf '%s%s%s\n' "$GREEN" "$RULE" "$NC"
@@ -325,7 +331,9 @@ if (( DO_REBOOT )); then
     echo
     printf '  %s⚙️  Rebooting in 30s — press any key to cancel%s\n' "$ORANGE" "$NC"
     for ((i=30; i>0; i--)); do
-      printf '\r  %s⚙️  Rebooting in %2ds — any key to cancel%s ' "$ORANGE" "$NC" >&3
+      # three conversions, three arguments: %s %2d %s
+      printf '\r\033[K  %s⚙️  Rebooting in %2ds — any key to cancel%s ' \
+        "$ORANGE" "$i" "$NC" >&3
       if IFS= read -rsn1 -t 1 _ </dev/tty; then
         printf '\r\033[K' >&3
         printf '  %s⚠  Reboot cancelled — run %ssudo reboot%s when ready\n' \

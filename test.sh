@@ -326,22 +326,26 @@ printf '  %s⚙️  Reload%s    : %ssudo pkill -x cog%s (relaunches in 5s)\n' \
 printf '%s%s%s\n' "$GREEN" "$RULE" "$NC"
 
 # ---------------------------------------------------------------- reboot
+# ---------------------------------------------------------------- reboot
 if (( DO_REBOOT )); then
   if (( ISTTY )); then
+    # hand the terminal back: fd 1 is a pipe into tee, and two writers to one
+    # tty cannot be ordered. Nothing after this point is written to $LOG.
+    exec 1>&3 2>&3
+    sleep 0.2                     # let tee finish copying what is already queued
     echo
     cancelled=0
     for ((i=30; i>0; i--)); do
-      # one line, redrawn in place: no separate header to strand
       printf '\r\033[K  %s⚙️  Rebooting in %2ds — press any key to cancel%s' \
-        "$ORANGE" "$i" "$NC" >&3
+        "$ORANGE" "$i" "$NC"
       if IFS= read -rsn1 -t 1 _ </dev/tty; then
         cancelled=1
         break
       fi
     done
-    printf '\r\033[K' >&3           # single clear, after the loop, once
+    printf '\r\033[K'
     if (( cancelled )); then
-      # 4 conversions, 4 arguments — %s ⚠, then bold "sudo reboot"
+      # 4 conversions, 4 arguments
       printf '  %s⚠%s  Reboot cancelled — run %s%ssudo reboot%s when ready\n' \
         "$YELLOW" "$NC" "$NC" "$BOLD" "$NC"
       DO_REBOOT=0
